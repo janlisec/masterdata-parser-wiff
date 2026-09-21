@@ -11,8 +11,8 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
-name = "openbis-parser-example"
-description = "An example parser for openBIS using the bam-masterdata interface."
+name = "ms-wiff-parser"
+description = "Sciex MS_WIFF parser for openBIS using the bam-masterdata interface."
 dynamic = ["version"]
 readme = "README.md"
 requires-python = ">=3.13"
@@ -28,8 +28,8 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/BAMresearch/openbis-parser-example"
-"Bug Tracker" = "https://github.com/BAMresearch/openbis-parser-example/issues"
+"Homepage" = "https://github.com/janlisec/masterdata-parser-wiff"
+"Bug Tracker" = "https://github.com/janlisec/masterdata-parser-wiff/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -42,7 +42,7 @@ dev = [
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
-include = ["src/openbis_parser_example/*.py", "tests/*.py"]
+include = ["src/ms_wiff/*.py", "tests/*.py"]
 exclude = [
     ".bzr",
     ".direnv",
@@ -116,7 +116,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools_scm]
-write_to = "src/openbis_parser_example/_version.py"
+write_to = "src/ms_wiff/_version.py"
 
 [project.entry-points."bam.parsers"]
-openbis_parser_example_entry_point = "openbis_parser_example:openbis_parser_example_entry_point"
+ms_wiff = "ms_wiff:ms_wiff_entry_point"

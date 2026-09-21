@@ -1,102 +1,73 @@
-# openbis-parser-example
+# MS_WIFF parser
 
-Example parser for openBIS using the `bam-masterdata` parser interface.
+Parser plugin for Sciex mass-spectrometry WIFF files using the
+`bam-masterdata` parser interface.
 
-This repository can be used as a template for creating new parsers that can be used with the [`openbis-upload-helper`](https://github.com/BAMresearch/openbis-upload-helper).
+## Current behavior
 
+The parser represents each measurement contained in a WIFF file as one
+`ExperimentalStep` object. A single WIFF file may therefore produce one or
+many objects. The normalized measurement metadata is stored in the object's
+`notes` property as XML and in the spreadsheet property using openBIS's
+`<SPREADSHEET><DATA>base64(JSON)</DATA></SPREADSHEET>` representation.
 
-## 1. Create a new parser repository
+The parser accepts only `.wiff` inputs. For every selected WIFF file it checks
+for a companion scan file with the exact name `<file>.wiff.scan` (for example,
+`LC_mult_sam.wiff.scan`) and warns if it is missing. The parser does not attach
+files during metadata updates, preventing repeated runs from creating duplicate
+datasets; existing attachments are left unchanged.
 
-You can either [fork this repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) or [use it as a template](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+Existing file attachments are preserved, but the parser does not attach files
+during repeated metadata updates. Initial dataset ingestion needs a separate
+upload workflow.
 
-Click **Use this template** and choose **Create a new repository**:
+The current reader treats a WIFF as a 7-Zip-readable compound container. It
+enumerates `SampleSubtree\SampleN` entries and reads only the small
+`SampleDABE\CFR_INFO` and `SampleDABE\DATA` records, plus the root
+`FileRec_Str`. Embedded UTF-16LE strings provide the original filename,
+measurement name, acquisition method, acquisition batch, instrument, and
+workstation. The generated object name is
+`<original-file-stem>_<measurement-name>`, and the extracted values are stored
+in valid XML in `notes`, and as the web-tool spreadsheet structure in
+`experimental_step_spreadsheet`. Each generated object also
+gets a stable code based on the original filename and sample number, such as
+`MSW_ACN_POS_SAMPLE_001`; this keeps repeated measurement names distinct.
 
-<div align="center"><img width="900" alt="use-this-template" src="https://github.com/user-attachments/assets/4a6e244b-285c-4982-a576-7dcb69aa24fa" /></div>
+7-Zip must be installed and available as `7z`/`7za` on the host running the
+web tool. `MSWIFFParser` still accepts an injected measurement reader for
+isolated tests and future reader replacement.
 
-Choose:
+## Development
 
-- the organization or profile where the repository will be created;
-- a repository name;
-- a short description;
-- the desired visibility.
+Create the project environment and install development dependencies:
 
-At BAM, parsers are typically hosted under the [`BAMresearch`](https://github.com/BAMresearch) organization.
-
-<div align="center"><img width="600" alt="create-new-template" src="https://github.com/user-attachments/assets/bf509059-b734-4634-9e32-96b2c220b257" /></div>
-
-
-## 2. Define your parser
-
-Clone your new repository:
-
-```bash
-git clone https://github.com/BAMresearch/<repository-name>.git
+```powershell
+uv venv .venv --python 3.13
+uv sync --extra dev --active --python .venv\Scripts\python.exe
 ```
 
-**Note**: The examples below use this repository's current package name, openbis_parser_example. Replace it with your own repository name where needed.
+Run the tests and lint:
 
-The repository has the following structure:
-
-```sh
-openbis-parser-example
-├── LICENSE
-├── pyproject.toml
-├── README.md
-├── src
-│   ├── openbis_parser_example
-│       ├── __init__.py
-│       ├── parser.py
-│       └── _version.py
-└── tests
-    ├── __init__.py
-    ├── conftest.py
-    └── test_parser.py
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\ruff.exe check .
 ```
 
-To create your parser:
+The package registers the `ms_wiff` entry point in the `bam.parsers` group.
+The host web tool discovers installed parser plugins through this entry point.
 
-1. Define your parser class in `src/<package-name>/parser.py`. The class **must** inherit from the `bam-masterdata` parser interface, `AbstractParser`.
-2. Expose the parser in `src/<package-name>/__init__.py`:
+## Example WIFF files
 
-```python
-from .parser import MyParser
+The repository includes non-confidential WIFF fixtures in `tests/data/` for
+parser development and regression tests:
 
-my_parser_entry_point = {
-    "name": "My Parser",
-    "description": "Description of the parser.",
-    "parser_class": MyParser,
-}
-```
+- `LC_one_sam.wiff` - liquid-chromatography WIFF with one sample.
+- `LC_mult_sam.wiff` - liquid-chromatography WIFF with multiple samples.
+- `DI_mult_sam.wiff` - direct-injection WIFF with multiple samples.
+- Companion `.wiff.scan` files are intentionally not included because they
+  exceed the repository size limit; tests must cover both present and missing
+  companions.
 
-3. Register the parser in `pyproject.toml`:
-
-```sh
-[project.entry-points."bam.parsers"]
-my_parser = "<package-name>:my_parser_entry_point"
-```
-
-4. Update the remaining package-specific values in `pyproject.toml`, such as the project name, package paths, URLs, and `setuptools-scm` configuration.
-
-## 3. Implement and test the parser
-
-Implement the parsing logic in:
-
-```sh
-src/<package-name>/parser.py
-```
-
-Add or update tests in:
-
-```sh
-tests/test_parser.py
-```
-
-The parser should transform the source files into `bam-masterdata` objects that can later be written to openBIS.
-
-## 4. Use the parser with `openbis-upload-helper`
-
-Once the parser is developed, tested, and released as a Python package, it can be included as a dependency of the [`openbis-upload-helper`](https://github.com/BAMresearch/openbis-upload-helper).
-
-`openbis-upload-helper` automatically discovers installed parsers registered under the bam.parsers entry-point group.
-
-If the parser should be included in the distributed application, contact the `openbis-upload-helper` maintainers and provide the parser repository and released package version.
+These binary fixtures are intentionally kept in the repository because the
+parser must support files that contain one or many measurements. Add tests
+against them when the WIFF reader and metadata mapping are implemented.
