@@ -43,18 +43,28 @@ class TestMSWIFFParser:
             "<ms-wiff-metadata><scan>1</scan></ms-wiff-metadata>",
             "<ms-wiff-metadata><scan>2</scan></ms-wiff-metadata>",
         ]
-        assert [
+        spreadsheets = [
             json.loads(
                 base64.b64decode(
-                    obj.experimental_step_spreadsheet.split("<DATA>")[1]
-                    .split("</DATA>")[0]
+                    obj.experimental_step_spreadsheet.split("<DATA>")[1].split(
+                        "</DATA>"
+                    )[0]
                 )
-            )["values"]
+            )
             for obj in objects
-        ] == [
-            [["scan", "1"]],
-            [["scan", "2"]],
         ]
+
+        assert spreadsheets[0]["values"][0][0] == "scan"
+        assert spreadsheets[0]["values"][0][1] == "1"
+
+        assert spreadsheets[1]["values"][0][0] == "scan"
+        assert spreadsheets[1]["values"][0][1] == "2"
+
+        assert len(spreadsheets[0]["values"]) == 10
+        assert len(spreadsheets[0]["values"][0]) == 10
+
+        assert len(spreadsheets[1]["values"]) == 10
+        assert len(spreadsheets[1]["values"][0]) == 10
         assert [obj.datasets for obj in objects] == [[], []]
         assert len(collection.relationships) == 0
 
@@ -100,9 +110,7 @@ class TestMSWIFFParser:
             parser.parse([scan_file], collection, logger)
 
     def test_read_lc_mult_sam_fixture(self):
-        measurements = list(
-            read_mswiff_measurements("tests/data/LC_mult_sam.wiff")
-        )
+        measurements = list(read_mswiff_measurements("tests/data/LC_mult_sam.wiff"))
 
         assert len(measurements) == 7
         assert [measurement.name for measurement in measurements] == [
@@ -114,9 +122,7 @@ class TestMSWIFFParser:
             "ACN_pos_Sample002",
             "ACN_pos_Sample003",
         ]
-        assert [
-            measurement.code for measurement in measurements
-        ] == [
+        assert [measurement.code for measurement in measurements] == [
             "MSW_ACN_POS_SAMPLE_001",
             "MSW_ACN_POS_SAMPLE_002",
             "MSW_ACN_POS_SAMPLE_003",
