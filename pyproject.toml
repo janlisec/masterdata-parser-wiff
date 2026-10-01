@@ -15,7 +15,7 @@ name = "ms-wiff-parser"
 description = "Sciex MS_WIFF parser for openBIS using the bam-masterdata interface."
 dynamic = ["version"]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 authors = [
   { name = "BAM Data Store", email = "datastore@bam.de" },
 ]

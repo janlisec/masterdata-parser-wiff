@@ -103,46 +103,29 @@ def _metadata_xml(
     return ElementTree.tostring(root, encoding="unicode")
 
 
-def _metadata_spreadsheet(metadata_xml: str) -> str:
+def _metadata_spreadsheet(metadata_xml: str) -> Spreadsheet:
     metadata = ElementTree.fromstring(metadata_xml)
 
-    # Key-Value-Paare aus XML erzeugen
-    kv_rows = [[child.tag, child.text or ""] for child in metadata]
-
-    # Immer 10 Zeilen x 10 Spalten
     rows = 10
     cols = 10
-
-    # Leere 10x10 Matrix
     data = [["" for _ in range(cols)] for _ in range(rows)]
 
-    # Key:Value nach Spalte A/B schreiben
-    for i, (key, value) in enumerate(kv_rows[:rows]):
-        data[i][0] = key  # A
-        data[i][1] = value  # B
+    for i, child in enumerate(metadata[:rows]):
+        data[i][0] = child.tag
+        data[i][1] = child.text or ""
 
     spreadsheet = Spreadsheet(columns=cols, rows=rows)
-
-    spreadsheet.headers = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
-
     spreadsheet.data = data
     spreadsheet.values = data
-
-    spreadsheet.style = {}
-
-    # Optional: Header-Zeile wie im UI zentrieren
-    for row in range(1, rows + 1):
-        for col in spreadsheet.headers:
-            spreadsheet.style[f"{col}{row}"] = "text-align: center;"
-
+    spreadsheet.style = {
+        f"{col}{row}": "text-align: center;"
+        for row in range(1, rows + 1)
+        for col in spreadsheet.headers
+    }
     spreadsheet.meta = None
-
-    # Breiten analog zum UI
     spreadsheet.width = [50] * cols
 
-    encoded = base64.b64encode(spreadsheet.to_json().encode("utf-8")).decode("ascii")
-
-    return f"<SPREADSHEET><DATA>{encoded}</DATA></SPREADSHEET>"
+    return spreadsheet
 
 
 def _object_code(filename_stem: str, sample_number: int) -> str:
@@ -256,7 +239,7 @@ class MSWIFFParser(AbstractParser):
             )
 
             for measurement in measurements:
-                properties: dict[str, Any] = {
+                properties = {
                     "name": measurement.name,
                     "notes": measurement.spreadsheet_xml,
                     "experimental_step_spreadsheet": _metadata_spreadsheet(
